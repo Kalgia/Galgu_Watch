@@ -1,0 +1,36 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net9.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <UseWindowsForms>true</UseWindowsForms>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AssemblyName>GalguWatch</AssemblyName>
+    <RootNamespace>GalguWatch</RootNamespace>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>app.ico</ApplicationIcon>
+    <Version>1.0.0</Version>
+    <!-- WFO0003: DPI는 WPF 쪽 manifest로 지정하는 게 의도이므로 WinForms 경고 무시 -->
+    <NoWarn>$(NoWarn);WFO0003</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- WinForms 암시적 전역 using이 WPF 타입(Application, Brush 등)과 충돌하므로 제거 -->
+    <Using Remove="System.Windows.Forms" />
+    <Using Remove="System.Drawing" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="9.0.*" />
+    <PackageReference Include="SixLabors.ImageSharp" Version="3.1.*" />
+    <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.*" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- 웹 UI 정적 파일 — 빌드 출력의 web\ 폴더로 복사, WebView2가 가상 호스트로 로딩 -->
+    <Content Include="web\**" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>

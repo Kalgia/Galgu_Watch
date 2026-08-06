@@ -1,0 +1,11 @@
+<Window x:Class="GalguWatch.MainUi.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:wv2="clr-namespace:Microsoft.Web.WebView2.Wpf;assembly=Microsoft.Web.WebView2.Wpf"
+        Title="Galgu Watch"
+        Width="1080" Height="780"
+        MinWidth="640" MinHeight="480"
+        WindowStartupLocation="CenterScreen"
+        Background="#F4F6FA">
+    <wv2:WebView2 x:Name="Wv" />
+</Window>

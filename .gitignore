@@ -1,0 +1,8 @@
+# 빌드 산출물
+bin/
+obj/
+dist/
+
+# IDE
+.vs/
+*.user
