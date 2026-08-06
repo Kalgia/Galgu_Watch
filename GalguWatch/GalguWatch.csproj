@@ -29,8 +29,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- 웹 UI 정적 파일 — 빌드 출력의 web\ 폴더로 복사, WebView2가 가상 호스트로 로딩 -->
-    <Content Include="web\**" CopyToOutputDirectory="PreserveNewest" />
+    <!-- 웹 UI를 실행파일에 내장 — 배포본이 exe 하나로 끝나게 (WebResourceRequested로 응답) -->
+    <EmbeddedResource Include="web\**" />
   </ItemGroup>
 
 </Project>

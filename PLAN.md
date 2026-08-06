@@ -232,6 +232,7 @@ SQLite 테이블:
 
 Application ID·웹훅 URL은 사용자 제공분을 설정 DB에 기록 완료 (⚙️ 설정의 "디스코드 연동" 섹션에서 변경 가능). Rich Presence는 로컬 IPC(named pipe) 직접 구현 — 외부 라이브러리 의존성 없음. 웹훅 연결 테스트 메시지 발송 확인됨.
 
-**포터블 배포본 (2026-08-06):** `dist\GalguWatch\` (self-contained win-x64, .NET 설치 불필요) → 바탕화면 `GalguWatch_포터블_v1.0.zip` (72MB). 앱 ID는 기본값으로 내장(공개 값), 웹훅 URL은 보안상 미포함 — 친구가 설정에서 직접 붙여넣도록 사용법.txt에 안내. 새 버전 배포 시: `dotnet publish -c Release -r win-x64 --self-contained true -o dist\GalguWatch` 후 재압축.
+**포터블 배포본 (2026-08-06):** **단일 실행파일** — 웹 UI를 exe에 내장(EmbeddedResource + WebResourceRequested 응답)하고 single-file publish로 런타임까지 묶어 `GalguWatch.exe` 하나(약 73MB, 압축 내장)로 완결. 배포물 = exe + 사용법.txt → 바탕화면 `GalguWatch_포터블_v1.0.zip` (67MB). 앱 ID는 기본값으로 내장(공개 값), 웹훅 URL은 보안상 미포함 — 친구가 설정에서 직접 붙여넣도록 사용법.txt에 안내. 첫 실행은 내부 구성 요소 추출로 몇 초 소요.
+새 버전 배포: `dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:EnableCompressionInSingleFile=true -p:DebugType=None -p:DebugSymbols=false -o dist\GalguWatch` 후 재압축.
 
 3단계(자체 서버)는 디스코드 밖으로 확장할 필요가 생길 때만 간다.

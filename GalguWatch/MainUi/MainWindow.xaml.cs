@@ -52,19 +52,21 @@ public partial class MainWindow : Window
         catch { }
     }
 
+    private CoreWebView2Environment? _env;
+
     private async void OnLoaded(object sender, RoutedEventArgs e)
     {
         try
         {
-            var env = await CoreWebView2Environment.CreateAsync(
+            _env = await CoreWebView2Environment.CreateAsync(
                 null, Path.Combine(App.DataDir, "webview2"));
-            await Wv.EnsureCoreWebView2Async(env);
+            await Wv.EnsureCoreWebView2Async(_env);
             var core = Wv.CoreWebView2;
             core.Settings.IsStatusBarEnabled = false;
 
-            var webDir = Path.Combine(AppContext.BaseDirectory, "web");
-            core.SetVirtualHostNameToFolderMapping(
-                "app.galgu", webDir, CoreWebView2HostResourceAccessKind.Allow);
+            // 웹 UI는 실행파일 내장 리소스에서 응답 (app.galgu), 스크린샷은 실제 파일 매핑 (shots.galgu)
+            core.AddWebResourceRequestedFilter("https://app.galgu/*", CoreWebView2WebResourceContext.All);
+            core.WebResourceRequested += OnWebResource;
             core.SetVirtualHostNameToFolderMapping(
                 "shots.galgu", Path.Combine(App.DataDir, "screenshots"),
                 CoreWebView2HostResourceAccessKind.Allow);
@@ -79,6 +81,34 @@ public partial class MainWindow : Window
             MessageBox.Show($"화면을 열 수 없습니다:\n{ex.Message}", "Galgu Watch",
                 MessageBoxButton.OK, MessageBoxImage.Error);
             Close();
+        }
+    }
+
+    private void OnWebResource(object? sender, CoreWebView2WebResourceRequestedEventArgs e)
+    {
+        try
+        {
+            var path = new Uri(e.Request.Uri).AbsolutePath;              // 예: /index.html
+            var resName = "GalguWatch.web" + path.Replace('/', '.');     // GalguWatch.web.index.html
+            var stream = System.Reflection.Assembly.GetExecutingAssembly()
+                .GetManifestResourceStream(resName);
+            if (stream == null)
+            {
+                e.Response = _env!.CreateWebResourceResponse(null, 404, "Not Found", "");
+                return;
+            }
+            var mime = Path.GetExtension(path).ToLowerInvariant() switch
+            {
+                ".html" => "text/html; charset=utf-8",
+                ".css" => "text/css; charset=utf-8",
+                ".js" => "text/javascript; charset=utf-8",
+                _ => "application/octet-stream",
+            };
+            e.Response = _env!.CreateWebResourceResponse(stream, 200, "OK", $"Content-Type: {mime}");
+        }
+        catch (Exception ex)
+        {
+            Log.Error("내장 웹 리소스 응답 실패", ex);
         }
     }
 
