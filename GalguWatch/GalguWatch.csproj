@@ -11,7 +11,12 @@
     <RootNamespace>GalguWatch</RootNamespace>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <ApplicationIcon>app.ico</ApplicationIcon>
-    <Version>1.2.0</Version>
+    <Version>1.3.0</Version>
+    <!-- ScreenRecorderLib이 AnyCPU 미지원 — 배포도 win-x64 단일 타깃이라 x64로 고정 -->
+    <Platforms>x64</Platforms>
+    <Platform>x64</Platform>
+    <PlatformTarget>x64</PlatformTarget>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
     <!-- WFO0003: DPI는 WPF 쪽 manifest로 지정하는 게 의도이므로 WinForms 경고 무시 -->
     <NoWarn>$(NoWarn);WFO0003</NoWarn>
   </PropertyGroup>
@@ -26,6 +31,8 @@
     <PackageReference Include="Microsoft.Data.Sqlite" Version="9.0.*" />
     <PackageReference Include="SixLabors.ImageSharp" Version="3.1.*" />
     <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.*" />
+    <!-- 화면 녹화 — Windows.Graphics.Capture + Media Foundation H.264 mp4 -->
+    <PackageReference Include="ScreenRecorderLib" Version="6.*" />
   </ItemGroup>
 
   <ItemGroup>

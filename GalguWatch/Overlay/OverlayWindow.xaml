@@ -51,6 +51,8 @@
                     Click="BtnShot_Click" ToolTip="전체 화면 캡처"/>
             <Button x:Name="BtnRegion" Style="{StaticResource FlatBtn}" Content="✂"
                     Click="BtnRegion_Click" ToolTip="영역 지정 캡처 — 드래그로 범위 선택"/>
+            <Button x:Name="BtnRec" Style="{StaticResource FlatBtn}" Content="⏺"
+                    Click="BtnRec_Click" ToolTip="화면 녹화 시작"/>
         </StackPanel>
     </Border>
 </Window>

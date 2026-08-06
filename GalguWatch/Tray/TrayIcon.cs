@@ -39,6 +39,9 @@ public class TrayIcon : IDisposable
         });
         var miRegion = new WF.ToolStripMenuItem("영역 캡처", null, async (s, e) =>
             await App.CaptureRegionWithUiAsync());
+        var miRec = new WF.ToolStripMenuItem("🎥 녹화 시작", null, (s, e) => App.Rec.Toggle());
+        App.Rec.Changed += () =>
+            miRec.Text = App.Rec.IsRecording ? "🎥 녹화 정지 (저장)" : "🎥 녹화 시작";
         var miOpen = new WF.ToolStripMenuItem("캘린더 열기", null, (s, e) => App.OpenMainWindow());
         _miOverlay = new WF.ToolStripMenuItem("오버레이 숨기기", null, (s, e) => ToggleOverlay());
         var miExit = new WF.ToolStripMenuItem("종료", null, (s, e) => App.ExitApp());
@@ -46,6 +49,7 @@ public class TrayIcon : IDisposable
         menu.Items.Add(_miFinish);
         menu.Items.Add(miShot);
         menu.Items.Add(miRegion);
+        menu.Items.Add(miRec);
         menu.Items.Add(new WF.ToolStripSeparator());
         menu.Items.Add(miOpen);
         menu.Items.Add(_miOverlay);

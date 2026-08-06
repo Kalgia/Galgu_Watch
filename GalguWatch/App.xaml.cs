@@ -21,6 +21,7 @@ public partial class App : Application
     public static AppSettings Settings { get; private set; } = null!;
     public static TimerEngine Engine { get; private set; } = null!;
     public static ScreenshotService Shots { get; private set; } = null!;
+    public static RecordingService Rec { get; private set; } = null!;
     public static TrayIcon Tray { get; private set; } = null!;
     public static OverlayWindow Overlay { get; private set; } = null!;
     public static DiscordPresence Presence { get; private set; } = null!;
@@ -73,6 +74,7 @@ public partial class App : Application
             Engine.WorkStarted += () => _cheerTask = PostCheerAsync(start: true);
             Engine.WorkFinished += () => _cheerTask = PostCheerAsync(start: false);
             Shots = new ScreenshotService(Db, Settings, Engine, DataDir);
+            Rec = new RecordingService(Db, Settings, Engine, Shots);
             _idle = new IdleWatcher(Engine, Settings);
             _idle.IdleStopped += min => Tray.Balloon(
                 "자리비움으로 측정을 멈췄어요",
@@ -236,9 +238,8 @@ public partial class App : Application
         try
         {
             if (Settings.Get("discord_cheer_enabled") == "0") return;
-            var url = Settings.Get("discord_webhook_url");
-            if (string.IsNullOrWhiteSpace(url) ||
-                !url.StartsWith("https://discord.com/api/webhooks/", StringComparison.Ordinal)) return;
+            var url = Settings.DiscordWebhookUrl;
+            if (!url.StartsWith("https://discord.com/api/webhooks/", StringComparison.Ordinal)) return;
             var name = Settings.Get("display_name");
             if (string.IsNullOrWhiteSpace(name)) name = Environment.UserName;
             string msg;
@@ -269,6 +270,7 @@ public partial class App : Application
     {
         try
         {
+            Rec?.StopAndWait(3000);    // 녹화 중이면 mp4 마무리까지 기다린다
             Engine?.Finish();          // 하던 작업이 있으면 마무리 처리 (응원 메시지 포함)
             _cheerTask?.Wait(1500);    // 메시지 전송이 끝날 시간을 잠깐 준다
         }

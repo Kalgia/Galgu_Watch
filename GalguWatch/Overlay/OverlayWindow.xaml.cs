@@ -35,6 +35,7 @@ public partial class OverlayWindow : Window
         InitializeComponent();
         Opacity = Math.Clamp(_settings.OverlayOpacity, 0.3, 1.0);
         _engine.Changed += UpdateUi;
+        App.Rec.Changed += UpdateRecUi;
         Loaded += (s, e) => { PlaceWindow(); UpdateUi(); };
         // ⏹ 버튼 표시 등으로 폭이 변해도 화면 밖으로 밀리지 않게
         SizeChanged += (s, e) => { if (IsLoaded) ClampToScreen(); };
@@ -117,6 +118,19 @@ public partial class OverlayWindow : Window
 
     private async void BtnRegion_Click(object sender, RoutedEventArgs e)
         => await App.CaptureRegionWithUiAsync();
+
+    private static readonly Brush RecIdle = new SolidColorBrush(Color.FromRgb(0xE2, 0xE8, 0xF0));
+    private static readonly Brush RecOn = new SolidColorBrush(Color.FromRgb(0xEF, 0x44, 0x44));
+
+    private void BtnRec_Click(object sender, RoutedEventArgs e) => App.Rec.Toggle();
+
+    /// <summary>녹화 중이면 ⏺을 빨간색으로 — 한눈에 녹화 상태 확인</summary>
+    private void UpdateRecUi()
+    {
+        bool rec = App.Rec.IsRecording;
+        BtnRec.Foreground = rec ? RecOn : RecIdle;
+        BtnRec.ToolTip = rec ? "녹화 중 — 클릭하면 저장" : "화면 녹화 시작";
+    }
 
     private void OpenMain_Click(object sender, RoutedEventArgs e) => App.OpenMainWindow();
 

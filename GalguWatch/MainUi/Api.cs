@@ -225,7 +225,7 @@ public static class Api
         discordPresence = App.Settings.Get("discord_presence_enabled") != "0",
         discordCheer = App.Settings.Get("discord_cheer_enabled") != "0",
         displayName = App.Settings.Get("display_name") ?? Environment.UserName,
-        discordWebhookUrl = App.Settings.Get("discord_webhook_url") ?? "",
+        discordWebhookUrl = App.Settings.DiscordWebhookUrl,
         screenshotsDir = App.Shots.ShotsDir,
         screenshotsDirDefault = App.Shots.DefaultShotsDir,
     };
@@ -310,9 +310,7 @@ public static class Api
     /// <summary>공유 카드 PNG를 디스코드 웹훅으로 채널에 업로드</summary>
     public static async Task PostCardToDiscordAsync(string filePath, string message, string asciiName)
     {
-        var url = App.Settings.Get("discord_webhook_url");
-        if (string.IsNullOrWhiteSpace(url))
-            throw new InvalidOperationException("웹훅 URL이 없어요 — ⚙️ 설정의 디스코드 항목에 넣어주세요");
+        var url = App.Settings.DiscordWebhookUrl;
         if (!url.StartsWith("https://discord.com/api/webhooks/", StringComparison.Ordinal))
             throw new InvalidOperationException("웹훅 URL 형식이 이상해요");
         using var form = new System.Net.Http.MultipartFormDataContent();

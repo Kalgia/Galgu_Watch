@@ -49,6 +49,19 @@ public class AppSettings
     /// <summary>Rich Presence 앱 ID — 공개 값이라 기본 내장 (배포본에서도 동일한 "Galgu Watch" 이름으로 표시)</summary>
     public string DiscordClientId => Get("discord_client_id") ?? "1534779963771719760";
 
+    /// <summary>응원 메시지·일지 카드를 올릴 웹훅 — 배포본에서도 설정 없이 바로 동작하게 기본 내장.
+    /// 설정에서 다른 URL을 넣으면 그 값이 우선.</summary>
+    public string DiscordWebhookUrl
+    {
+        get
+        {
+            var v = Get("discord_webhook_url");
+            return string.IsNullOrWhiteSpace(v)
+                ? "https://discord.com/api/webhooks/1534781516750524488/3YrdAPiQ-G6_Jls5DzbVDz2AibYFfAkbA0PZjKOk6YC_FaR7QioWiM6TXAAAaG0CXnYw"
+                : v;
+        }
+    }
+
     public double? OverlayX => double.TryParse(Get("overlay_x"), NumberStyles.Float, CultureInfo.InvariantCulture, out var v) ? v : null;
     public double? OverlayY => double.TryParse(Get("overlay_y"), NumberStyles.Float, CultureInfo.InvariantCulture, out var v) ? v : null;
 

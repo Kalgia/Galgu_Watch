@@ -194,32 +194,44 @@ function renderShots() {
 
   for (const s of dayData.shots) {
     const card = el('div', 'shot');
-    const img = el('img');
-    img.loading = 'lazy';
-    img.src = s.url;
-    img.alt = s.takenAt;
-    img.onclick = () => {
-      $('#lightbox-img').src = s.url;
-      $('#lightbox').hidden = false;
-    };
+    const isVideo = s.kind === 'video';
+    let media;
+    if (isVideo) {
+      media = el('video');
+      media.src = s.url;
+      media.controls = true;
+      media.preload = 'metadata';
+    } else {
+      media = el('img');
+      media.loading = 'lazy';
+      media.src = s.url;
+      media.alt = s.takenAt;
+      media.onclick = () => {
+        $('#lightbox-img').src = s.url;
+        $('#lightbox').hidden = false;
+      };
+    }
     const meta = el('div', 'shot-meta');
     const time = el('span');
-    time.textContent = `${fmtTime(s.takenAt)}${s.kind === 'manual' ? ' 📷' : ''}`;
+    time.textContent = `${fmtTime(s.takenAt)}${isVideo ? ' 🎥' : s.kind === 'manual' ? ' 📷' : ''}`;
     const btns = el('div', 'shot-btns');
-    const btnIns = el('button', 'shot-btn');
-    btnIns.textContent = '일지에 넣기';
-    btnIns.onclick = () => insertImage(s);
+    if (!isVideo) {
+      const btnIns = el('button', 'shot-btn');
+      btnIns.textContent = '일지에 넣기';
+      btnIns.onclick = () => insertImage(s);
+      btns.append(btnIns);
+    }
     const btnDel = el('button', 'shot-btn danger');
     btnDel.textContent = '삭제';
     btnDel.onclick = async () => {
-      if (!confirm('이 스크린샷을 삭제할까요?')) return;
+      if (!confirm(isVideo ? '이 녹화 영상을 삭제할까요?' : '이 스크린샷을 삭제할까요?')) return;
       await rpc('deleteShot', { id: s.id });
       dayData = await rpc('getDay', { date: selDate });
       renderShots();
     };
-    btns.append(btnIns, btnDel);
+    btns.append(btnDel);
     meta.append(time, btns);
-    card.append(img, meta);
+    card.append(media, meta);
     g.appendChild(card);
   }
 }
@@ -393,8 +405,10 @@ function openShare() {
   if (!dayData || !selDate) return;
   const grid = $('#share-shots');
   grid.innerHTML = '';
-  $('#share-empty').hidden = dayData.shots.length > 0;
-  for (const s of dayData.shots) {
+  // 녹화 영상은 이미지 카드에 넣을 수 없으므로 공유 대상에서 제외
+  const shareable = dayData.shots.filter(s => s.kind !== 'video');
+  $('#share-empty').hidden = shareable.length > 0;
+  for (const s of shareable) {
     const item = el('label', 'share-shot');
     const cb = el('input');
     cb.type = 'checkbox';
@@ -413,7 +427,7 @@ function openShare() {
 
 function selectedShots() {
   const ids = new Set([...$('#share-shots').querySelectorAll('input:checked')].map(i => +i.dataset.id));
-  return dayData.shots.filter(s => ids.has(s.id));
+  return dayData.shots.filter(s => s.kind !== 'video' && ids.has(s.id));
 }
 
 /* 공유 카드 DOM — 테마와 무관하게 항상 밝게, 화면 밖(페이지 하단 아래)에 만들어 캡처만 한다 */
