@@ -1,4 +1,7 @@
 using System.IO;
+using System.Net.Http;
+using System.Text;
+using System.Text.Json;
 using System.Windows;
 using GalguWatch.Core;
 using GalguWatch.Overlay;
@@ -67,6 +70,8 @@ public partial class App : Application
             Settings = new AppSettings(Db);
             Engine = new TimerEngine(Db, Settings);
             Engine.RecoverIfCrashed();
+            Engine.WorkStarted += () => _cheerTask = PostCheerAsync(start: true);
+            Engine.WorkFinished += () => _cheerTask = PostCheerAsync(start: false);
             Shots = new ScreenshotService(Db, Settings, Engine, DataDir);
             _idle = new IdleWatcher(Engine, Settings);
             _idle.IdleStopped += min => Tray.Balloon(
@@ -83,6 +88,14 @@ public partial class App : Application
 
             if (Engine.RecoveryMessage != null)
                 Tray.Balloon("기록 복구", Engine.RecoveryMessage);
+            else
+            {
+                var dueToday = Db.Scalar<long>(
+                    "SELECT COUNT(*) FROM goals WHERE done=0 AND due_date=$d",
+                    ("$d", Engine.LogicalDate(DateTime.Now)));
+                if (dueToday > 0)
+                    Tray.Balloon("🎯 오늘까지인 목표", $"{dueToday}개의 목표가 오늘 마감이에요.");
+            }
             _ = Shots.CleanupOldAsync();
             Log.Info("초기화 완료");
             if (e.Args.Contains("--open-main")) OpenMainWindow();
@@ -156,11 +169,83 @@ public partial class App : Application
         t.Start();
     }
 
+    /// <summary>영역 지정 캡처 — 오버레이를 잠시 숨기고 선택 창을 띄운 뒤 해당 영역만 저장</summary>
+    public static async Task CaptureRegionWithUiAsync()
+    {
+        bool overlayVisible = Overlay.IsVisible;
+        if (overlayVisible) Overlay.Hide();
+        try
+        {
+            var region = RegionSelectWindow.PickRegion();
+            if (region != null)
+            {
+                await Task.Delay(150);   // 선택 베일이 화면에서 사라진 뒤 캡처
+                var f = await Shots.CaptureAsync("manual", region);
+                if (f != null) Tray.Balloon("✂ 영역 캡처 저장됨", Path.GetFileName(f));
+            }
+        }
+        finally
+        {
+            if (overlayVisible) Overlay.Show();
+        }
+    }
+
+    private static readonly HttpClient CheerHttp = new();
+    private static Task? _cheerTask;
+
+    // {0}=표시 이름
+    private static readonly string[] CheerStart =
+    {
+        "▶ **{0}**님이 작업을 시작하셨어요! 오늘 하루도 화이팅! 🔥",
+        "🎨 **{0}**님, 오늘도 작업 시작! 멋진 결과물 기대할게요 ✨",
+        "⚡ **{0}**님이 자리에 앉았습니다. 오늘도 갈구가 함께합니다 🗿",
+        "🚀 **{0}**님 작업 출발! 어제의 나를 넘어봅시다 💪",
+        "🌅 **{0}**님이 작업을 켰어요. 시작이 반이다, 화이팅!",
+    };
+
+    // {0}=표시 이름, {1}=오늘 누적 시간
+    private static readonly string[] CheerFinish =
+    {
+        "🏁 **{0}**님이 작업을 마무리하셨어요 — 오늘 {1} 작업. 오늘도 대단하세요! 👏",
+        "🌙 **{0}**님, 오늘 {1} 작업 완료! 수고 많으셨어요. 푹 쉬세요 ☕",
+        "✅ **{0}**님이 오늘의 작업을 끝냈습니다 — {1} 집중. 어제보다 성장했어요 📈",
+        "🎉 오늘도 해냈다! **{0}**님 {1} 작업 마무리. 내일도 이 기세로!",
+        "👏 **{0}**님, 오늘 {1} 작업하고 퇴근! 갈구 워치가 인정합니다 🗿",
+    };
+
+    /// <summary>작업 시작·마무리 응원 메시지를 디스코드 채널에 전송</summary>
+    private static async Task PostCheerAsync(bool start)
+    {
+        try
+        {
+            if (Settings.Get("discord_cheer_enabled") == "0") return;
+            var url = Settings.Get("discord_webhook_url");
+            if (string.IsNullOrWhiteSpace(url) ||
+                !url.StartsWith("https://discord.com/api/webhooks/", StringComparison.Ordinal)) return;
+            var name = Settings.Get("display_name");
+            if (string.IsNullOrWhiteSpace(name)) name = Environment.UserName;
+            var msg = start
+                ? string.Format(CheerStart[Random.Shared.Next(CheerStart.Length)], name)
+                : string.Format(CheerFinish[Random.Shared.Next(CheerFinish.Length)],
+                    name, Fmt.Hm(Engine.TodayTotalSec));
+            using var body = new StringContent(
+                JsonSerializer.Serialize(new { content = msg }), Encoding.UTF8, "application/json");
+            var res = await CheerHttp.PostAsync(url, body);
+            if (!res.IsSuccessStatusCode)
+                Log.Error($"응원 메시지 전송 실패 (HTTP {(int)res.StatusCode})");
+        }
+        catch (Exception ex)
+        {
+            Log.Error("응원 메시지 전송 실패", ex);
+        }
+    }
+
     public static void ExitApp()
     {
         try
         {
-            if (Engine != null! && Engine.State == TimerState.Running) Engine.Stop("앱 종료");
+            Engine?.Finish();          // 하던 작업이 있으면 마무리 처리 (응원 메시지 포함)
+            _cheerTask?.Wait(1500);    // 메시지 전송이 끝날 시간을 잠깐 준다
         }
         catch { }
         Current.Shutdown();

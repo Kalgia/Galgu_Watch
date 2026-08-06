@@ -14,6 +14,7 @@
     <h1 id="month-label">…</h1>
     <button id="btn-next" title="다음 달">▶</button>
     <button id="btn-today">오늘</button>
+    <button id="btn-goals">🎯 목표</button>
   </div>
   <div class="top-right">
     <span id="streak" class="streak" hidden></span>
@@ -26,12 +27,24 @@
 <main>
   <section id="cal-grid" class="cal-grid"></section>
 
+  <section id="goals-panel" hidden>
+    <div class="goal-add">
+      <input id="goal-title" type="text" placeholder="새 목표 입력… (예: 스컬프팅 브러시 연습 끝내기)" maxlength="200">
+      <input id="goal-due" type="date" title="목표 날짜 (선택)">
+      <button id="goal-add-btn">추가</button>
+    </div>
+    <div id="goal-list"></div>
+    <h3 id="goal-done-head" class="done-head muted" hidden>완료됨</h3>
+    <div id="goal-done-list"></div>
+  </section>
+
   <section id="day-panel" hidden>
     <div class="day-head">
       <h2 id="day-title"></h2>
       <span id="day-total" class="muted"></span>
       <button id="btn-share">📤 공유</button>
     </div>
+    <p id="day-goals" class="day-goals muted small" hidden></p>
 
     <div class="card">
       <div class="tl-wrap"><div id="timeline"></div></div>
@@ -91,7 +104,9 @@
     </label>
     <h4 class="modal-sub">디스코드 연동</h4>
     <label><span>"작업 중" 상태 실시간 표시</span><input id="set-presence" type="checkbox"></label>
-    <label class="stack"><span>웹훅 URL (일지 카드 올릴 채널)</span><input id="set-webhook" type="text" placeholder="https://discord.com/api/webhooks/…"></label>
+    <label><span>시작·마무리 응원 메시지를 채널로 보내기</span><input id="set-cheer" type="checkbox"></label>
+    <label><span>표시 이름 (응원 메시지에 사용)</span><input id="set-name" type="text" maxlength="30"></label>
+    <label class="stack"><span>웹훅 URL (일지 카드·응원 메시지 올릴 채널)</span><input id="set-webhook" type="text" placeholder="https://discord.com/api/webhooks/…"></label>
     <div class="modal-btns">
       <button id="set-save">저장</button>
       <button id="set-close">닫기</button>

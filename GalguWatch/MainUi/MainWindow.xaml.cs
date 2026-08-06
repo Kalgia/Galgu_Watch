@@ -17,6 +17,8 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+        var v = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version;
+        if (v != null) Title = $"Galgu Watch v{v.ToString(2)}";
         Loaded += OnLoaded;
     }
 

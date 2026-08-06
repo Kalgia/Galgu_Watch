@@ -20,6 +20,21 @@ public class TimerEngine
     /// <summary>상태 변화 + 측정 중 1초 틱마다 (UI 갱신용)</summary>
     public event Action? Changed;
 
+    /// <summary>측정 시작됨</summary>
+    public event Action? Started;
+
+    /// <summary>세션 종료됨 — (지속 초, 사유)</summary>
+    public event Action<int, string>? SessionEnded;
+
+    /// <summary>작업 블록(시작~마무리, 일시정지 포함)이 열려 있는지</summary>
+    public bool WorkBlockOpen { get; private set; }
+
+    /// <summary>작업 블록 시작 — 첫 ▶ (응원 메시지 트리거)</summary>
+    public event Action? WorkStarted;
+
+    /// <summary>작업 마무리 — ⏹ (응원 메시지 트리거)</summary>
+    public event Action? WorkFinished;
+
     public TimerEngine(Db db, AppSettings settings)
     {
         _db = db;
@@ -65,6 +80,25 @@ public class TimerEngine
         _tick.Start();
         Log.Info("측정 시작");
         Changed?.Invoke();
+        Started?.Invoke();
+        if (!WorkBlockOpen)
+        {
+            WorkBlockOpen = true;
+            WorkStarted?.Invoke();
+        }
+    }
+
+    /// <summary>작업 마무리 — 측정 중이면 세션을 끝내고, 열려 있던 작업 블록을 닫는다</summary>
+    public void Finish()
+    {
+        if (State == TimerState.Running) Stop("마무리");
+        if (WorkBlockOpen)
+        {
+            WorkBlockOpen = false;
+            Log.Info("작업 마무리");
+            Changed?.Invoke();
+            WorkFinished?.Invoke();
+        }
     }
 
     /// <summary>endAt: 자리비움 등으로 실제 종료 시점을 되돌려야 할 때</summary>
@@ -86,6 +120,7 @@ public class TimerEngine
         _todayCacheDate = "";
         Log.Info($"측정 정지 ({reason}) — {Fmt.Hms(TimeSpan.FromSeconds(durSec))}");
         Changed?.Invoke();
+        SessionEnded?.Invoke(durSec, reason);
     }
 
     private void InsertSession(DateTime start, DateTime end, int durSec)

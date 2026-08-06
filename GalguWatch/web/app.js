@@ -51,9 +51,12 @@ const dateLabel = d => {
 };
 
 /* ---------- 캘린더 ---------- */
+let monthGoals = new Map();   // date -> [목표 제목들]
+
 async function loadMonth() {
   const r = await rpc('getMonth', { year: cur.y, month: cur.m });
   monthDays = new Map(r.days.map(d => [d.date, d.totalSec]));
+  monthGoals = new Map((r.goalsDue || []).map(g => [g.date, g.titles]));
   cfg.today = r.today;
   updateStreak(r.streak);
   renderCalendar();
@@ -109,6 +112,13 @@ function renderCalendar() {
       t.textContent = hm(sec);
       cell.appendChild(t);
     }
+    const gd = monthGoals.get(date);
+    if (gd && gd.length) {
+      const g = el('span', 'cal-goal');
+      g.textContent = '🎯';
+      g.title = '목표: ' + gd.join(', ');
+      cell.appendChild(g);
+    }
     cell.onclick = () => selectDay(date);
     grid.appendChild(cell);
   }
@@ -117,6 +127,7 @@ function renderCalendar() {
 /* ---------- 일별 상세 ---------- */
 async function selectDay(date) {
   await flushNote();
+  showView('cal');
   selDate = date;
   dayData = await rpc('getDay', { date });
   renderCalendar();
@@ -126,10 +137,21 @@ async function selectDay(date) {
 function renderDay() {
   $('#day-panel').hidden = false;
   $('#day-title').textContent = dateLabel(selDate);
+  renderDayGoals();
   renderDayTotal();
   renderTimeline();
   renderShots();
   loadNoteEditor();
+}
+
+function renderDayGoals() {
+  const dg = $('#day-goals');
+  if (dayData.dueGoals && dayData.dueGoals.length) {
+    dg.hidden = false;
+    dg.textContent = '🎯 이 날까지: ' + dayData.dueGoals.join(' · ');
+  } else {
+    dg.hidden = true;
+  }
 }
 
 function renderDayTotal() {
@@ -249,8 +271,10 @@ async function refreshOnFocus() {
   if (!cfg) return;
   try {
     await loadMonth();
+    if (curView === 'goals') await loadGoals();
     if (selDate) {
       dayData = await rpc('getDay', { date: selDate });
+      renderDayGoals();
       renderDayTotal();
       renderTimeline();
       renderShots();
@@ -261,12 +285,14 @@ async function refreshOnFocus() {
 /* ---------- 이벤트 ---------- */
 $('#btn-prev').onclick = async () => {
   await flushNote();
+  showView('cal');
   cur.m--;
   if (cur.m === 0) { cur.m = 12; cur.y--; }
   await loadMonth();
 };
 $('#btn-next').onclick = async () => {
   await flushNote();
+  showView('cal');
   cur.m++;
   if (cur.m === 13) { cur.m = 1; cur.y++; }
   await loadMonth();
@@ -314,6 +340,8 @@ function fillSettings(s) {
   $('#set-opacity-v').textContent = op + '%';
   $('#set-goal').value = s.goalMinutes;
   $('#set-presence').checked = !!s.discordPresence;
+  $('#set-cheer').checked = !!s.discordCheer;
+  $('#set-name').value = s.displayName || '';
   $('#set-webhook').value = s.discordWebhookUrl || '';
   const sd = $('#set-shotdir');
   sd.value = s.screenshotsDir;
@@ -344,6 +372,8 @@ $('#set-save').onclick = async () => {
     goalMinutes: Math.max(0, +$('#set-goal').value || 0),
     captureMonitor: $('#set-monitor').value,
     discordPresence: $('#set-presence').checked,
+    discordCheer: $('#set-cheer').checked,
+    displayName: $('#set-name').value.trim(),
     discordWebhookUrl: $('#set-webhook').value.trim(),
     screenshotsDir: $('#set-shotdir').value.trim(),
   });
@@ -468,6 +498,153 @@ async function exportHtml() {
     btn.disabled = false;
   }
 }
+
+/* ---------- 목표 탭 ---------- */
+let goals = [];
+let curView = 'cal';
+
+function showView(v) {
+  curView = v;
+  $('#cal-grid').hidden = v !== 'cal';
+  $('#day-panel').hidden = v !== 'cal' || !selDate;
+  $('#goals-panel').hidden = v !== 'goals';
+  $('#btn-goals').classList.toggle('active', v === 'goals');
+}
+
+async function loadGoals() {
+  goals = await rpc('getGoals');
+  renderGoals();
+}
+
+function dday(dueDate, done) {
+  if (!dueDate) return null;
+  const d = Math.round((parseTs(dueDate + ' 00:00:00') - parseTs(cfg.today + ' 00:00:00')) / 86400000);
+  if (done) return { text: dueDate.slice(5).replace('-', '/'), cls: '' };
+  if (d > 0) return { text: `D-${d}`, cls: d <= 3 ? 'soon' : '' };
+  if (d === 0) return { text: 'D-DAY', cls: 'soon' };
+  return { text: `${-d}일 지남`, cls: 'over' };
+}
+
+async function goalChanged() {
+  await loadGoals();
+  await loadMonth();          // 캘린더 🎯 갱신
+  if (selDate) {
+    dayData = await rpc('getDay', { date: selDate });
+    renderDayGoals();
+  }
+}
+
+function goalRow(g) {
+  const row = el('div', 'goal-row' + (g.done ? ' done' : ''));
+  const cb = el('input');
+  cb.type = 'checkbox';
+  cb.checked = g.done;
+  cb.title = g.done ? '달성 취소 (체크아웃)' : '달성! (체크)';
+  cb.onchange = async () => {
+    await rpc('toggleGoal', { id: g.id });
+    await goalChanged();
+  };
+  const title = el('span', 'goal-title');
+  title.textContent = g.title;
+  title.title = '클릭해서 내용 수정';
+  title.onclick = () => editGoalTitle(row, g, title);
+  const due = el('input');
+  due.type = 'date';
+  due.value = g.dueDate || '';
+  due.title = '목표 날짜 (비우면 없음)';
+  due.onchange = async () => {
+    await rpc('updateGoal', { id: g.id, title: g.title, dueDate: due.value });
+    await goalChanged();
+  };
+  const chip = el('span', 'goal-chip');
+  const dd = dday(g.dueDate, g.done);
+  if (dd) {
+    chip.textContent = dd.text;
+    if (dd.cls) chip.classList.add(dd.cls);
+  } else {
+    chip.hidden = true;
+  }
+  const del = el('button', 'shot-btn danger');
+  del.textContent = '삭제';
+  del.onclick = async () => {
+    if (!confirm(`목표를 삭제할까요?\n"${g.title}"`)) return;
+    await rpc('deleteGoal', { id: g.id });
+    await goalChanged();
+  };
+  row.append(cb, title, due, chip);
+  if (g.done && g.doneAt) {
+    const da = el('span', 'muted small');
+    da.textContent = `완료 ${g.doneAt.slice(5, 10).replace('-', '/')}`;
+    row.appendChild(da);
+  }
+  row.appendChild(del);
+  return row;
+}
+
+function editGoalTitle(row, g, titleEl) {
+  const inp = el('input', 'goal-edit');
+  inp.type = 'text';
+  inp.value = g.title;
+  inp.maxLength = 200;
+  row.replaceChild(inp, titleEl);
+  inp.focus();
+  inp.select();
+  let committed = false;
+  const commit = async () => {
+    if (committed) return;
+    committed = true;
+    const t = inp.value.trim();
+    if (t && t !== g.title) {
+      await rpc('updateGoal', { id: g.id, title: t, dueDate: g.dueDate || '' });
+      await goalChanged();
+    } else {
+      renderGoals();
+    }
+  };
+  inp.onblur = commit;
+  inp.onkeydown = e => {
+    if (e.key === 'Enter') inp.blur();
+    if (e.key === 'Escape') { committed = true; renderGoals(); }
+  };
+}
+
+function renderGoals() {
+  const act = $('#goal-list');
+  const doneL = $('#goal-done-list');
+  act.innerHTML = '';
+  doneL.innerHTML = '';
+  const active = goals.filter(g => !g.done);
+  const done = goals.filter(g => g.done);
+  if (!active.length) {
+    const p = el('p', 'muted small');
+    p.textContent = '진행 중인 목표가 없어요. 위에서 새 목표를 추가해보세요.';
+    act.appendChild(p);
+  }
+  for (const g of active) act.appendChild(goalRow(g));
+  $('#goal-done-head').hidden = !done.length;
+  for (const g of done) doneL.appendChild(goalRow(g));
+}
+
+async function addGoal() {
+  const t = $('#goal-title').value.trim();
+  if (!t) return;
+  await rpc('addGoal', { title: t, dueDate: $('#goal-due').value });
+  $('#goal-title').value = '';
+  $('#goal-due').value = '';
+  await goalChanged();
+  $('#goal-title').focus();
+}
+
+$('#btn-goals').onclick = async () => {
+  if (curView === 'goals') {
+    showView('cal');
+    return;
+  }
+  await loadGoals();
+  showView('goals');
+};
+$('#goal-add-btn').onclick = addGoal;
+$('#goal-title').addEventListener('keydown', e => { if (e.key === 'Enter') addGoal(); });
 
 $('#btn-share').onclick = openShare;
 $('#share-close').onclick = () => { $('#share').hidden = true; };

@@ -9,11 +9,12 @@ public class TrayIcon : IDisposable
     private readonly WF.NotifyIcon _icon;
     private readonly Icon _iconRunning;
     private readonly Icon _iconStopped;
+    private readonly Icon _iconPaused;
     private readonly TimerEngine _engine;
     private readonly ScreenshotService _shots;
     private readonly WF.ToolStripMenuItem _miToggle;
+    private readonly WF.ToolStripMenuItem _miFinish;
     private readonly WF.ToolStripMenuItem _miOverlay;
-    private TimerState _lastState;
     private string _lastText = "";
     private bool _balloonRestartsTimer;
 
@@ -23,19 +24,28 @@ public class TrayIcon : IDisposable
         _shots = shots;
         _iconRunning = MakeDotIcon(Color.FromArgb(34, 197, 94));
         _iconStopped = MakeDotIcon(Color.FromArgb(148, 163, 184));
+        _iconPaused = MakeDotIcon(Color.FromArgb(245, 158, 11));
 
         var menu = new WF.ContextMenuStrip();
         _miToggle = new WF.ToolStripMenuItem("측정 시작", null, (s, e) => _engine.Toggle());
+        _miFinish = new WF.ToolStripMenuItem("작업 마무리", null, (s, e) => _engine.Finish())
+        {
+            Enabled = false,
+        };
         var miShot = new WF.ToolStripMenuItem("지금 캡처", null, async (s, e) =>
         {
             var f = await _shots.CaptureAsync("manual");
             if (f != null) Balloon("📷 캡처 저장됨", System.IO.Path.GetFileName(f));
         });
+        var miRegion = new WF.ToolStripMenuItem("영역 캡처", null, async (s, e) =>
+            await App.CaptureRegionWithUiAsync());
         var miOpen = new WF.ToolStripMenuItem("캘린더 열기", null, (s, e) => App.OpenMainWindow());
         _miOverlay = new WF.ToolStripMenuItem("오버레이 숨기기", null, (s, e) => ToggleOverlay());
         var miExit = new WF.ToolStripMenuItem("종료", null, (s, e) => App.ExitApp());
         menu.Items.Add(_miToggle);
+        menu.Items.Add(_miFinish);
         menu.Items.Add(miShot);
+        menu.Items.Add(miRegion);
         menu.Items.Add(new WF.ToolStripSeparator());
         menu.Items.Add(miOpen);
         menu.Items.Add(_miOverlay);
@@ -57,7 +67,6 @@ public class TrayIcon : IDisposable
         };
         _icon.BalloonTipClosed += (s, e) => _balloonRestartsTimer = false;
 
-        _lastState = _engine.State;
         _engine.Changed += Refresh;
         Refresh();
     }
@@ -81,13 +90,13 @@ public class TrayIcon : IDisposable
     private void Refresh()
     {
         bool running = _engine.State == TimerState.Running;
-        if (_engine.State != _lastState)
-        {
-            _lastState = _engine.State;
-            _icon.Icon = running ? _iconRunning : _iconStopped;
-            _miToggle.Text = running ? "측정 정지" : "측정 시작";
-        }
-        var text = $"Galgu Watch — 오늘 {Fmt.Hm(_engine.TodayTotalSec)}" + (running ? " · 측정 중" : "");
+        bool paused = !running && _engine.WorkBlockOpen;
+        var icon = running ? _iconRunning : paused ? _iconPaused : _iconStopped;
+        if (!ReferenceEquals(_icon.Icon, icon)) _icon.Icon = icon;
+        _miToggle.Text = running ? "일시정지" : "측정 시작";
+        _miFinish.Enabled = _engine.WorkBlockOpen;
+        var text = $"Galgu Watch — 오늘 {Fmt.Hm(_engine.TodayTotalSec)}"
+            + (running ? " · 측정 중" : paused ? " · 일시정지" : "");
         if (text != _lastText)
         {
             _lastText = text;

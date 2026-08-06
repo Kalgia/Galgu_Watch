@@ -40,6 +40,14 @@ public class Db
               name TEXT NOT NULL,
               color TEXT
             );
+            CREATE TABLE IF NOT EXISTS goals(
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              title TEXT NOT NULL,
+              due_date TEXT,
+              done INTEGER NOT NULL DEFAULT 0,
+              done_at TEXT,
+              created_at TEXT NOT NULL
+            );
             CREATE TABLE IF NOT EXISTS settings(
               key TEXT PRIMARY KEY,
               value TEXT NOT NULL

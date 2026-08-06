@@ -21,6 +21,7 @@ public partial class OverlayWindow : Window
 
     private static readonly Brush BgStopped = new SolidColorBrush(Color.FromArgb(0xE6, 0x1E, 0x29, 0x3B));
     private static readonly Brush BgRunning = new SolidColorBrush(Color.FromArgb(0xE6, 0x14, 0x53, 0x2D));
+    private static readonly Brush BgPaused = new SolidColorBrush(Color.FromArgb(0xE6, 0x78, 0x35, 0x0F));
 
     private readonly TimerEngine _engine;
     private readonly ScreenshotService _shots;
@@ -76,12 +77,15 @@ public partial class OverlayWindow : Window
     private void UpdateUi()
     {
         bool running = _engine.State == TimerState.Running;
+        bool paused = !running && _engine.WorkBlockOpen;
         BtnToggle.Content = running ? "⏸" : "▶";
-        Root.Background = running ? BgRunning : BgStopped;
+        BtnStop.Visibility = _engine.WorkBlockOpen ? Visibility.Visible : Visibility.Collapsed;
+        Root.Background = running ? BgRunning : paused ? BgPaused : BgStopped;
         TxtTime.Text = running
             ? Fmt.Hms(_engine.CurrentElapsed)
             : $"오늘 {Fmt.Hm(_engine.TodayTotalSec)}";
-        Root.ToolTip = $"오늘 누적 {Fmt.Hm(_engine.TodayTotalSec)}" + (running ? " · 측정 중" : "");
+        Root.ToolTip = $"오늘 누적 {Fmt.Hm(_engine.TodayTotalSec)}"
+            + (running ? " · 측정 중" : paused ? " · 일시정지" : "");
     }
 
     private void Root_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
@@ -100,12 +104,17 @@ public partial class OverlayWindow : Window
 
     private void BtnToggle_Click(object sender, RoutedEventArgs e) => _engine.Toggle();
 
+    private void BtnStop_Click(object sender, RoutedEventArgs e) => _engine.Finish();
+
     private async void BtnShot_Click(object sender, RoutedEventArgs e)
     {
         var file = await _shots.CaptureAsync("manual");
         if (file != null)
             App.Tray.Balloon("📷 캡처 저장됨", System.IO.Path.GetFileName(file));
     }
+
+    private async void BtnRegion_Click(object sender, RoutedEventArgs e)
+        => await App.CaptureRegionWithUiAsync();
 
     private void OpenMain_Click(object sender, RoutedEventArgs e) => App.OpenMainWindow();
 

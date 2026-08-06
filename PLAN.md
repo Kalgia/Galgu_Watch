@@ -172,6 +172,7 @@ SQLite 테이블:
 
 **진행 상황 (2026-08-06): Phase 0~5 완료.** 실측 — Release 빌드 상주 상태(오버레이+트레이) 실제 점유 메모리 약 11MB(유휴 트림 후), 캘린더 창을 여는 동안만 WebView2 프로세스가 추가로 뜨고 닫으면 회수됨.
 - Phase 5에서 추가된 것: ⚙️ 설정 화면(캡처 간격·보관 기한·자리비움·하루 시작 시각·캡처 대상 모니터·오버레이 투명도·일일 목표), 일일 목표 달성 ✓ 표시 + 연속 달성 🔥 스트릭, 다크/화이트 테마 전환(🌙/☀️), 전용 앱 아이콘, 바탕화면 바로가기.
+- 이후 추가 (v1.1~v1.2): 스크린샷 저장 폴더 변경(파일 이동 포함), ✂ 영역 지정 캡처(드래그 범위 선택, 오버레이·트레이), 🎯 목표 관리 탭 — 목표 추가/달성 체크·체크아웃/삭제/내용·날짜 인라인 수정, D-day 칩(임박·초과 색상), 목표 날짜 캘린더 🎯 표시(툴팁)와 일별 상세 연동, 목표 당일 마감 트레이 알림, 디스코드 응원 메시지(시작·마무리 시 채널 자동 발송, 랜덤 문구 5종씩, 표시 이름·끄기 설정), 오버레이 ▶/⏸/⏹ 3버튼 — 일시정지(조용, 주황 표시)와 작업 마무리(응원 발송) 분리, 자리비움·절전 자동 정지는 일시정지 취급.
 - 다음 확장: 9장(공유 기능) 및 3장의 확장 아이디어.
 
 ## 8. 주의할 점과 열어둔 결정
@@ -233,6 +234,6 @@ SQLite 테이블:
 Application ID·웹훅 URL은 사용자 제공분을 설정 DB에 기록 완료 (⚙️ 설정의 "디스코드 연동" 섹션에서 변경 가능). Rich Presence는 로컬 IPC(named pipe) 직접 구현 — 외부 라이브러리 의존성 없음. 웹훅 연결 테스트 메시지 발송 확인됨.
 
 **포터블 배포본 (2026-08-06):** **단일 실행파일** — 웹 UI를 exe에 내장(EmbeddedResource + WebResourceRequested 응답)하고 single-file publish로 런타임까지 묶어 `GalguWatch.exe` 하나(약 73MB, 압축 내장)로 완결. 배포물 = exe + 사용법.txt → 바탕화면 `GalguWatch_포터블_v1.0.zip` (67MB). 앱 ID는 기본값으로 내장(공개 값), 웹훅 URL은 보안상 미포함 — 친구가 설정에서 직접 붙여넣도록 사용법.txt에 안내. 첫 실행은 내부 구성 요소 추출로 몇 초 소요.
-새 버전 배포: `dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:EnableCompressionInSingleFile=true -p:DebugType=None -p:DebugSymbols=false -o dist\GalguWatch` 후 재압축.
+새 버전 배포: 저장소 루트의 **`make_portable.ps1`** 실행 — csproj의 `<Version>`을 읽어 실행파일명과 zip명에 버전을 자동 표기 (예: `GalguWatch_v1.1.exe`, `GalguWatch_포터블_v1.1.zip`). 사용법.txt 원본은 저장소 루트에 있고 스크립트가 배포본에 복사한다. 창 제목에도 버전 표시됨.
 
 3단계(자체 서버)는 디스코드 밖으로 확장할 필요가 생길 때만 간다.

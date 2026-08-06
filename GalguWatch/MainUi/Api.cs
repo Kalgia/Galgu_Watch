@@ -22,6 +22,11 @@ public static class Api
         "getSettings" => GetSettings(),
         "saveSettings" => SaveSettings(p),
         "pickFolder" => PickFolder(),
+        "getGoals" => GetGoals(),
+        "addGoal" => AddGoal(p),
+        "toggleGoal" => ToggleGoal(p.GetProperty("id").GetInt64()),
+        "updateGoal" => UpdateGoal(p),
+        "deleteGoal" => DeleteGoal(p.GetProperty("id").GetInt64()),
         "exportDay" => ExportDay(ReqDate(p), p.GetProperty("noteHtml").GetString() ?? "",
             p.GetProperty("shotIds")),
         "openDataFolder" => OpenDataFolder(),
@@ -78,14 +83,102 @@ public static class Api
             var live = App.Engine.TodayTotalSec;
             if (live > 0) days[today] = live;
         }
+        // 이 달에 목표 날짜가 걸린 미완료 목표들 (캘린더 🎯 표시용)
+        var goalsDue = new List<object>();
+        using (var c = App.Db.Open())
+        using (var cmd = c.CreateCommand())
+        {
+            cmd.CommandText =
+                "SELECT due_date, title FROM goals WHERE done=0 AND due_date >= $a AND due_date <= $b ORDER BY due_date, id";
+            cmd.Parameters.AddWithValue("$a", a);
+            cmd.Parameters.AddWithValue("$b", b);
+            using var r = cmd.ExecuteReader();
+            var map = new Dictionary<string, List<string>>();
+            while (r.Read())
+            {
+                var d = r.GetString(0);
+                if (!map.TryGetValue(d, out var l)) map[d] = l = new List<string>();
+                l.Add(r.GetString(1));
+            }
+            foreach (var kv in map) goalsDue.Add(new { date = kv.Key, titles = kv.Value });
+        }
         return new
         {
             today,
             streak = CalcStreak(),
+            goalsDue,
             days = days.OrderBy(kv => kv.Key)
                        .Select(kv => new { date = kv.Key, totalSec = kv.Value })
                        .ToList(),
         };
+    }
+
+    private static object GetGoals()
+    {
+        var list = new List<object>();
+        using var c = App.Db.Open();
+        using var cmd = c.CreateCommand();
+        cmd.CommandText = """
+            SELECT id, title, due_date, done, done_at FROM goals
+            ORDER BY done, CASE WHEN due_date IS NULL THEN 1 ELSE 0 END, due_date, id
+            """;
+        using var r = cmd.ExecuteReader();
+        while (r.Read())
+            list.Add(new
+            {
+                id = r.GetInt64(0),
+                title = r.GetString(1),
+                dueDate = r.IsDBNull(2) ? null : r.GetString(2),
+                done = r.GetInt64(3) == 1,
+                doneAt = r.IsDBNull(4) ? null : r.GetString(4),
+            });
+        return list;
+    }
+
+    private static string? OptDate(JsonElement p, string name)
+    {
+        var v = p.TryGetProperty(name, out var e) ? e.GetString() : null;
+        if (string.IsNullOrWhiteSpace(v)) return null;
+        if (!Regex.IsMatch(v, @"^\d{4}-\d{2}-\d{2}$")) throw new ArgumentException("잘못된 날짜 형식");
+        return v;
+    }
+
+    private static object AddGoal(JsonElement p)
+    {
+        var title = (p.GetProperty("title").GetString() ?? "").Trim();
+        if (title.Length == 0) throw new ArgumentException("목표 내용을 입력하세요");
+        App.Db.NonQuery(
+            "INSERT INTO goals(title, due_date, created_at) VALUES($t,$d,$c)",
+            ("$t", title),
+            ("$d", OptDate(p, "dueDate")),
+            ("$c", DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss")));
+        return true;
+    }
+
+    private static object ToggleGoal(long id)
+    {
+        var done = App.Db.Scalar<long>("SELECT done FROM goals WHERE id=$i", ("$i", id)) == 1;
+        App.Db.NonQuery("UPDATE goals SET done=$d, done_at=$a WHERE id=$i",
+            ("$d", done ? 0 : 1),
+            ("$a", done ? null : DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss")),
+            ("$i", id));
+        return true;
+    }
+
+    private static object UpdateGoal(JsonElement p)
+    {
+        var id = p.GetProperty("id").GetInt64();
+        var title = (p.GetProperty("title").GetString() ?? "").Trim();
+        if (title.Length == 0) throw new ArgumentException("목표 내용은 비울 수 없어요");
+        App.Db.NonQuery("UPDATE goals SET title=$t, due_date=$d WHERE id=$i",
+            ("$t", title), ("$d", OptDate(p, "dueDate")), ("$i", id));
+        return true;
+    }
+
+    private static object DeleteGoal(long id)
+    {
+        App.Db.NonQuery("DELETE FROM goals WHERE id=$i", ("$i", id));
+        return true;
     }
 
     /// <summary>오늘부터 거슬러 올라가며 일일 목표를 달성한 연속 일수 (오늘 미달성이면 어제부터 카운트)</summary>
@@ -130,6 +223,8 @@ public static class Api
         goalMinutes = App.Settings.GoalMinutes,
         captureMonitor = App.Settings.CaptureMonitor,
         discordPresence = App.Settings.Get("discord_presence_enabled") != "0",
+        discordCheer = App.Settings.Get("discord_cheer_enabled") != "0",
+        displayName = App.Settings.Get("display_name") ?? Environment.UserName,
         discordWebhookUrl = App.Settings.Get("discord_webhook_url") ?? "",
         screenshotsDir = App.Shots.ShotsDir,
         screenshotsDirDefault = App.Shots.DefaultShotsDir,
@@ -161,6 +256,10 @@ public static class Api
         s.Set("capture_monitor", monitor);
 
         s.Set("discord_presence_enabled", p.GetProperty("discordPresence").GetBoolean() ? "1" : "0");
+        s.Set("discord_cheer_enabled", p.GetProperty("discordCheer").GetBoolean() ? "1" : "0");
+        var dn = (p.GetProperty("displayName").GetString() ?? "").Trim();
+        if (dn.Length == 0) s.Delete("display_name");
+        else s.Set("display_name", dn.Length > 30 ? dn[..30] : dn);
         var wh = (p.GetProperty("discordWebhookUrl").GetString() ?? "").Trim();
         if (wh.Length > 0 && !wh.StartsWith("https://discord.com/api/webhooks/", StringComparison.Ordinal))
             throw new ArgumentException("웹훅 URL 형식이 아니에요 (https://discord.com/api/webhooks/… 이어야 함)");
@@ -272,6 +371,15 @@ public static class Api
                 }
             }
         }
+        var dueGoals = new List<string>();
+        using (var c = App.Db.Open())
+        using (var cmd = c.CreateCommand())
+        {
+            cmd.CommandText = "SELECT title FROM goals WHERE due_date=$d AND done=0 ORDER BY id";
+            cmd.Parameters.AddWithValue("$d", date);
+            using var r = cmd.ExecuteReader();
+            while (r.Read()) dueGoals.Add(r.GetString(0));
+        }
         var note = App.Db.Scalar<string>("SELECT content_md FROM notes WHERE date=$d", ("$d", date));
         bool isToday = date == App.Engine.LogicalDate(DateTime.Now);
         return new
@@ -279,6 +387,7 @@ public static class Api
             sessions,
             shots,
             note,
+            dueGoals,
             totalSec = isToday ? App.Engine.TodayTotalSec : sum,
             running = isToday && App.Engine.State == TimerState.Running,
         };

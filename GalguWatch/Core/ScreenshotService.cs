@@ -59,7 +59,8 @@ public class ScreenshotService
         }
     }
 
-    public async Task<string?> CaptureAsync(string kind)
+    /// <summary>region이 주어지면 그 영역(물리 픽셀)만, 아니면 설정된 모니터 전체를 캡처</summary>
+    public async Task<string?> CaptureAsync(string kind, System.Drawing.Rectangle? region = null)
     {
         if (_capturing) return null;
         _capturing = true;
@@ -68,7 +69,12 @@ public class ScreenshotService
             var takenAt = DateTime.Now;
             var date = _engine.LogicalDate(takenAt);
             System.Drawing.Rectangle b;
-            if (_settings.CaptureMonitor == "all")
+            if (region != null)
+            {
+                b = region.Value;
+                if (b.Width < 1 || b.Height < 1) return null;
+            }
+            else if (_settings.CaptureMonitor == "all")
             {
                 b = WF.SystemInformation.VirtualScreen;
             }

@@ -111,6 +111,86 @@ button:hover { background: var(--btn-hover); }
 .top-right { display: flex; align-items: center; gap: 12px; }
 #btn-theme, #btn-settings { padding: 5px 9px; font-size: 14px; }
 .streak { font-weight: 700; color: #ea580c; font-size: 13.5px; }
+#btn-goals.active { border-color: var(--accent); color: var(--accent); font-weight: 600; }
+
+/* ---------- 목표 탭 ---------- */
+#goals-panel { margin-top: 16px; max-width: 760px; }
+.goal-add { display: flex; gap: 8px; margin-bottom: 14px; }
+.goal-add input[type=text] {
+  flex: 1;
+  background: var(--card);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 9px;
+  padding: 8px 12px;
+  font: inherit;
+  outline: none;
+}
+.goal-add input[type=text]:focus { border-color: var(--accent2); }
+.goal-add input[type=date], .goal-row input[type=date] {
+  background: var(--card);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 8px;
+  padding: 6px 8px;
+  font: inherit;
+  font-size: 12.5px;
+}
+html[data-theme="dark"] input[type=date]::-webkit-calendar-picker-indicator { filter: invert(1); }
+#goal-add-btn { background: var(--accent); border-color: var(--accent); color: #fff; padding: 6px 16px; }
+#goal-add-btn:hover { filter: brightness(1.07); }
+.goal-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 9px 12px;
+  margin-bottom: 7px;
+  box-shadow: var(--shadow);
+}
+.goal-row input[type=checkbox] {
+  width: 17px;
+  height: 17px;
+  accent-color: var(--accent);
+  flex-shrink: 0;
+  cursor: pointer;
+}
+.goal-title { flex: 1; cursor: pointer; overflow-wrap: anywhere; }
+.goal-row.done .goal-title { text-decoration: line-through; color: var(--muted); }
+.goal-chip {
+  font-size: 11.5px;
+  font-weight: 700;
+  padding: 2px 9px;
+  border-radius: 20px;
+  background: var(--field);
+  color: var(--muted);
+  white-space: nowrap;
+}
+.goal-chip.soon { background: rgba(245, 158, 11, .16); color: #d97706; }
+.goal-chip.over { background: rgba(239, 68, 68, .16); color: #dc2626; }
+.goal-edit {
+  flex: 1;
+  background: var(--field);
+  border: 1px solid var(--accent2);
+  color: var(--text);
+  border-radius: 7px;
+  padding: 5px 8px;
+  font: inherit;
+  outline: none;
+}
+.done-head { margin: 18px 0 8px; font-size: 13px; }
+
+/* 캘린더 목표 표시 */
+.cal-goal {
+  position: absolute;
+  bottom: 6px;
+  left: 9px;
+  font-size: 11px;
+  cursor: default;
+}
+.day-goals { margin: -4px 0 10px; }
 
 /* ---------- 캘린더 ---------- */
 .cal-grid {
@@ -366,6 +446,7 @@ button:hover { background: var(--btn-hover); }
   width: 100%;
 }
 .modal-box label.stack { flex-direction: column; align-items: stretch; gap: 5px; }
+#set-name { width: 150px; }
 .dir-row { display: flex; gap: 6px; }
 .dir-row input { flex: 1; min-width: 0; }
 .dir-row button { white-space: nowrap; padding: 5px 10px; font-size: 12px; }

@@ -42,11 +42,15 @@
             MouseLeftButtonDown="Root_MouseLeftButtonDown">
         <StackPanel Orientation="Horizontal">
             <Button x:Name="BtnToggle" Style="{StaticResource FlatBtn}" Content="▶" FontSize="15"
-                    Click="BtnToggle_Click" ToolTip="측정 시작/정지"/>
+                    Click="BtnToggle_Click" ToolTip="시작 / 일시정지"/>
+            <Button x:Name="BtnStop" Style="{StaticResource FlatBtn}" Content="⏹" FontSize="15"
+                    Click="BtnStop_Click" ToolTip="작업 마무리 — 오늘 작업 끝!" Visibility="Collapsed"/>
             <TextBlock x:Name="TxtTime" Foreground="White" FontSize="15" FontFamily="Consolas"
                        VerticalAlignment="Center" Margin="7,0" Text="0:00"/>
             <Button x:Name="BtnShot" Style="{StaticResource FlatBtn}" Content="📷"
-                    Click="BtnShot_Click" ToolTip="지금 캡처"/>
+                    Click="BtnShot_Click" ToolTip="전체 화면 캡처"/>
+            <Button x:Name="BtnRegion" Style="{StaticResource FlatBtn}" Content="✂"
+                    Click="BtnRegion_Click" ToolTip="영역 지정 캡처 — 드래그로 범위 선택"/>
         </StackPanel>
     </Border>
 </Window>
