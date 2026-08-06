@@ -201,6 +201,9 @@ public partial class App : Application
         "⚡ **{0}**님이 자리에 앉았습니다. 오늘도 갈구가 함께합니다 🗿",
         "🚀 **{0}**님 작업 출발! 어제의 나를 넘어봅시다 💪",
         "🌅 **{0}**님이 작업을 켰어요. 시작이 반이다, 화이팅!",
+        "🔥 오늘의 갈굼 시작! **{0}**님, 집중 모드 돌입입니다",
+        "🎯 **{0}**님이 작업대에 복귀! 목표를 향해 한 걸음 더",
+        "💻 **{0}**님 작업 개시! 완성으로 가는 길, 오늘도 한 칸 전진",
     };
 
     // {0}=표시 이름, {1}=오늘 누적 시간
@@ -211,7 +214,21 @@ public partial class App : Application
         "✅ **{0}**님이 오늘의 작업을 끝냈습니다 — {1} 집중. 어제보다 성장했어요 📈",
         "🎉 오늘도 해냈다! **{0}**님 {1} 작업 마무리. 내일도 이 기세로!",
         "👏 **{0}**님, 오늘 {1} 작업하고 퇴근! 갈구 워치가 인정합니다 🗿",
+        "🛌 **{0}**님이 오늘 작업 끝! {1} 몰입 — 충분히 자랑해도 됩니다 😎",
+        "📦 오늘치 작업 완료! **{0}**님 {1} 기록. 꾸준함이 실력이 됩니다",
+        "🌟 **{0}**님 수고하셨어요! 오늘 {1} — 쌓인 시간은 배신하지 않아요",
     };
+
+    private static int _lastStartMsg = -1;
+    private static int _lastFinishMsg = -1;
+
+    /// <summary>직전에 쓴 문구를 제외하고 랜덤 선택 — 연속으로 같은 메시지가 나가지 않게</summary>
+    private static int NextCheerIdx(int count, int last)
+    {
+        int idx = Random.Shared.Next(last >= 0 ? count - 1 : count);
+        if (last >= 0 && idx >= last) idx++;
+        return idx;
+    }
 
     /// <summary>작업 시작·마무리 응원 메시지를 디스코드 채널에 전송</summary>
     private static async Task PostCheerAsync(bool start)
@@ -224,13 +241,21 @@ public partial class App : Application
                 !url.StartsWith("https://discord.com/api/webhooks/", StringComparison.Ordinal)) return;
             var name = Settings.Get("display_name");
             if (string.IsNullOrWhiteSpace(name)) name = Environment.UserName;
-            var msg = start
-                ? string.Format(CheerStart[Random.Shared.Next(CheerStart.Length)], name)
-                : string.Format(CheerFinish[Random.Shared.Next(CheerFinish.Length)],
-                    name, Fmt.Hm(Engine.TodayTotalSec));
+            string msg;
+            if (start)
+            {
+                _lastStartMsg = NextCheerIdx(CheerStart.Length, _lastStartMsg);
+                msg = string.Format(CheerStart[_lastStartMsg], name);
+            }
+            else
+            {
+                _lastFinishMsg = NextCheerIdx(CheerFinish.Length, _lastFinishMsg);
+                msg = string.Format(CheerFinish[_lastFinishMsg], name, Fmt.Hm(Engine.TodayTotalSec));
+            }
             using var body = new StringContent(
                 JsonSerializer.Serialize(new { content = msg }), Encoding.UTF8, "application/json");
-            var res = await CheerHttp.PostAsync(url, body);
+            // ConfigureAwait(false): 종료 시 UI 스레드가 이 작업을 기다려도 교착 없이 완료되도록
+            var res = await CheerHttp.PostAsync(url, body).ConfigureAwait(false);
             if (!res.IsSuccessStatusCode)
                 Log.Error($"응원 메시지 전송 실패 (HTTP {(int)res.StatusCode})");
         }

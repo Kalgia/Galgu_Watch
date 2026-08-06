@@ -36,6 +36,8 @@ public partial class OverlayWindow : Window
         Opacity = Math.Clamp(_settings.OverlayOpacity, 0.3, 1.0);
         _engine.Changed += UpdateUi;
         Loaded += (s, e) => { PlaceWindow(); UpdateUi(); };
+        // ⏹ 버튼 표시 등으로 폭이 변해도 화면 밖으로 밀리지 않게
+        SizeChanged += (s, e) => { if (IsLoaded) ClampToScreen(); };
     }
 
     protected override void OnSourceInitialized(EventArgs e)
