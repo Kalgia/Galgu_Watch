@@ -315,7 +315,18 @@ function fillSettings(s) {
   $('#set-goal').value = s.goalMinutes;
   $('#set-presence').checked = !!s.discordPresence;
   $('#set-webhook').value = s.discordWebhookUrl || '';
+  const sd = $('#set-shotdir');
+  sd.value = s.screenshotsDir;
+  sd.dataset.default = s.screenshotsDirDefault;
 }
+$('#set-shotdir-pick').onclick = async () => {
+  const p = await rpc('pickFolder');
+  if (p) $('#set-shotdir').value = p;
+};
+$('#set-shotdir-reset').onclick = () => {
+  const sd = $('#set-shotdir');
+  sd.value = sd.dataset.default || '';
+};
 $('#btn-settings').onclick = async () => {
   fillSettings(await rpc('getSettings'));
   $('#settings').hidden = false;
@@ -334,6 +345,7 @@ $('#set-save').onclick = async () => {
     captureMonitor: $('#set-monitor').value,
     discordPresence: $('#set-presence').checked,
     discordWebhookUrl: $('#set-webhook').value.trim(),
+    screenshotsDir: $('#set-shotdir').value.trim(),
   });
   cfg = await rpc('getConfig');
   await loadMonth();

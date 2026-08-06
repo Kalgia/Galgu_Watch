@@ -80,6 +80,15 @@
       <span class="range-wrap"><input id="set-opacity" type="range" min="30" max="100"><em id="set-opacity-v"></em></span></label>
     <label><span>일일 목표 (분, 0 = 사용 안 함)</span><input id="set-goal" type="number" min="0" max="1440" step="10"></label>
     <p class="muted small">하루 시작 시각: 새벽 작업을 전날 기록으로 집계하는 기준이에요. 목표를 켜면 달성한 날에 ✓ 표시와 연속 달성(🔥) 카운트가 보여요.</p>
+    <h4 class="modal-sub">저장 위치</h4>
+    <label class="stack">
+      <span>스크린샷 저장 폴더 <span class="muted small">(변경하면 기존 파일도 옮겨져요 · 기록 DB 위치는 그대로)</span></span>
+      <span class="dir-row">
+        <input id="set-shotdir" type="text" readonly>
+        <button id="set-shotdir-pick" type="button">변경…</button>
+        <button id="set-shotdir-reset" type="button">기본값</button>
+      </span>
+    </label>
     <h4 class="modal-sub">디스코드 연동</h4>
     <label><span>"작업 중" 상태 실시간 표시</span><input id="set-presence" type="checkbox"></label>
     <label class="stack"><span>웹훅 URL (일지 카드 올릴 채널)</span><input id="set-webhook" type="text" placeholder="https://discord.com/api/webhooks/…"></label>

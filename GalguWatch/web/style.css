@@ -366,6 +366,9 @@ button:hover { background: var(--btn-hover); }
   width: 100%;
 }
 .modal-box label.stack { flex-direction: column; align-items: stretch; gap: 5px; }
+.dir-row { display: flex; gap: 6px; }
+.dir-row input { flex: 1; min-width: 0; }
+.dir-row button { white-space: nowrap; padding: 5px 10px; font-size: 12px; }
 .modal-sub {
   margin: 13px 0 3px;
   padding-top: 12px;

@@ -21,6 +21,7 @@ public static class Api
         "setTheme" => SetTheme(p.GetProperty("theme").GetString() ?? "light"),
         "getSettings" => GetSettings(),
         "saveSettings" => SaveSettings(p),
+        "pickFolder" => PickFolder(),
         "exportDay" => ExportDay(ReqDate(p), p.GetProperty("noteHtml").GetString() ?? "",
             p.GetProperty("shotIds")),
         "openDataFolder" => OpenDataFolder(),
@@ -130,7 +131,15 @@ public static class Api
         captureMonitor = App.Settings.CaptureMonitor,
         discordPresence = App.Settings.Get("discord_presence_enabled") != "0",
         discordWebhookUrl = App.Settings.Get("discord_webhook_url") ?? "",
+        screenshotsDir = App.Shots.ShotsDir,
+        screenshotsDirDefault = App.Shots.DefaultShotsDir,
     };
+
+    private static object? PickFolder()
+    {
+        var dlg = new Microsoft.Win32.OpenFolderDialog { Title = "스크린샷 저장 폴더 선택" };
+        return dlg.ShowDialog() == true ? dlg.FolderName : null;
+    }
 
     private static object SaveSettings(JsonElement p)
     {
@@ -156,6 +165,38 @@ public static class Api
         if (wh.Length > 0 && !wh.StartsWith("https://discord.com/api/webhooks/", StringComparison.Ordinal))
             throw new ArgumentException("웹훅 URL 형식이 아니에요 (https://discord.com/api/webhooks/… 이어야 함)");
         s.Set("discord_webhook_url", wh);
+
+        // 스크린샷 저장 폴더 — 변경 시 기존 파일 이동
+        var oldDir = App.Shots.ShotsDir;
+        var newDirRaw = (p.GetProperty("screenshotsDir").GetString() ?? "").Trim();
+        string newDir;
+        if (newDirRaw.Length == 0 ||
+            string.Equals(newDirRaw, App.Shots.DefaultShotsDir, StringComparison.OrdinalIgnoreCase))
+        {
+            s.Delete("screenshots_dir");
+            newDir = App.Shots.DefaultShotsDir;
+        }
+        else
+        {
+            if (!Path.IsPathRooted(newDirRaw))
+                throw new ArgumentException("폴더는 절대 경로여야 해요 (예: D:\\GalguShots)");
+            var full = Path.GetFullPath(newDirRaw);
+            bool nested =
+                full.StartsWith(oldDir + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase) ||
+                oldDir.StartsWith(full + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase);
+            if (nested && !string.Equals(full, oldDir, StringComparison.OrdinalIgnoreCase))
+                throw new ArgumentException("기존 폴더와 겹치는(안쪽/바깥쪽) 경로는 안 돼요");
+            Directory.CreateDirectory(full);   // 쓰기 가능 여부 검증 겸
+            s.Set("screenshots_dir", full);
+            newDir = full;
+        }
+        if (!string.Equals(oldDir, newDir, StringComparison.OrdinalIgnoreCase))
+        {
+            _ = App.Shots.MigrateAsync(oldDir, newDir);
+            foreach (System.Windows.Window w in System.Windows.Application.Current.Windows)
+                if (w is MainWindow mw) mw.RemapShots(newDir);
+            Log.Info($"스크린샷 폴더 변경: {oldDir} → {newDir} (이동 시작)");
+        }
 
         App.Shots.RefreshInterval();
         App.Overlay.RefreshFromSettings();

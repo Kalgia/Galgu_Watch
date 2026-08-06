@@ -26,6 +26,17 @@ public partial class MainWindow : Window
         ApplyTheme(App.Settings.Get("theme") ?? "light");
     }
 
+    /// <summary>스크린샷 저장 폴더가 바뀌면 갤러리 이미지 매핑을 새 폴더로 교체</summary>
+    public void RemapShots(string dir)
+    {
+        try
+        {
+            Wv.CoreWebView2?.SetVirtualHostNameToFolderMapping(
+                "shots.galgu", dir, CoreWebView2HostResourceAccessKind.Allow);
+        }
+        catch { }
+    }
+
     /// <summary>창 배경·제목줄·테두리를 테마에 맞춰 통일 (흰/검 라인이 생기지 않게)</summary>
     public void ApplyTheme(string theme)
     {
@@ -68,7 +79,7 @@ public partial class MainWindow : Window
             core.AddWebResourceRequestedFilter("https://app.galgu/*", CoreWebView2WebResourceContext.All);
             core.WebResourceRequested += OnWebResource;
             core.SetVirtualHostNameToFolderMapping(
-                "shots.galgu", Path.Combine(App.DataDir, "screenshots"),
+                "shots.galgu", App.Shots.ShotsDir,
                 CoreWebView2HostResourceAccessKind.Allow);
 
             core.WebMessageReceived += OnWebMessage;
